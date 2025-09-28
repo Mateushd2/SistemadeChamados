@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Chamados (Apenas Frontend)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        body.dark {
+            background-color: #1a202c;
+            color: #e2e8f0;
+        }
+
+        /* Estilos do Tailwind CSS que se aplicam em modo escuro */
+        .dark .bg-white {
+            background-color: #2d3748;
+        }
+        .dark .text-gray-900 {
+            color: #e2e8f0;
+        }
+        .dark .text-gray-800 {
+            color: #cbd5e0;
+        }
+        .dark .text-gray-700 {
+            color: #a0aec0;
+        }
+        .dark .text-gray-600 {
+            color: #a0aec0;
+        }
+        .dark .text-gray-500 {
+            color: #718096;
+        }
+        .dark .text-gray-400 {
+            color: #4a5568;
+        }
+        .dark .bg-gray-100 {
+            background-color: #2d3748;
+        }
+        .dark .bg-gray-200 {
+            background-color: #4a5568;
+        }
+        .dark .bg-gray-50 {
+            background-color: #2d3748;
+        }
+        .dark .bg-blue-100 {
+            background-color: #2c5282;
+        }
+        .dark .border-gray-200 {
+            border-color: #4a5568;
+        }
+        .dark .border-gray-300 {
+            border-color: #4a5568;
+        }
+        .dark .border-blue-200 {
+            border-color: #2c5282;
+        }
+        .dark .shadow-lg {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
+        }
+        .dark .hover\:bg-gray-50:hover {
+            background-color: #4a5568;
+        }
+        .dark .context-menu {
+            background-color: #2d3748;
+            border-color: #4a5568;
+        }
+        .dark .context-menu-item:hover {
+            background-color: #4a5568;
+        }
+        
+        /* Novo estilo para destacar tickets não lidos no modo escuro */
+        .dark .new-ticket-highlight {
+            background-color: #4a5568;
+        }
+
+        /* Estilo para destacar os textos de data e remetente no modo escuro */
+        .dark .text-highlight-dark {
+            color: #cbd5e0; /* Um cinza mais claro para maior contraste */
+        }
+        .dark .text-highlight-date-dark {
+             color: #a0aec0;
+        }
+
+
+        .container {
+            max-width: 1200px;
+        }
+
+        .rounded-xl {
+            border-radius: 1rem;
+        }
+
+        input[type="email"], input[type="text"], textarea, select {
+            transition: all 0.2s ease-in-out;
+            background-color: white;
+            color: #1a202c;
+        }
+        
+        .dark input[type="email"], .dark input[type="text"], .dark textarea, .dark select {
+            background-color: #2d3748;
+            color: #e2e8f0;
+            border-color: #4a5568;
+        }
+        .dark input:focus, .dark textarea:focus, .dark select:focus {
+            border-color: #63b3ed;
+            box-shadow: 0 0 0 3px rgba(99, 179, 237, 0.5);
+        }
+
+        .tooltip {
+            position: absolute;
+            background-color: #333;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s;
+            white-space: nowrap;
+        }
+
+        .tooltip.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .is-fullscreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 300%;
+            height: 100%;
+            z-index: 50;
+            border-radius: 0;
+            padding: 2rem;
+            overflow-y: auto;
+            animation: fadeIn 0.3s ease-out;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .ticket-history-panel-fullscreen {
+            max-height: 100% !important;
+            flex-grow: 1;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .message-content {
+            white-space: pre-wrap;
+        }
+
+        .context-menu {
+            position: absolute;
+            z-index: 100;
+            background-color: white;
+            border: 1px solid #ccc;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .context-menu-item {
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .context-menu-item:hover {
+            background-color: #f3f4f6;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans antialiased">
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="mb-6 flex flex-col md:flex-row justify-between items-center text-center md:text-left">
+            <div class="order-2 md:order-1 flex flex-col items-center flex-grow">
+                <h1 class="text-4xl md:text-5xl font-extrabold text-gray-900">Sistema de Chamados</h1>
+                <div class="flex items-center justify-center mt-2 relative">
+                    <p id="user-id-display" class="text-sm text-gray-600 mr-2">ID do Usuário: a1b2c3d4-e5f6-7g8h-i9j0</p>
+                    <button id="copy-user-id-btn" class="text-gray-400 hover:text-gray-700 transition-colors" title="Copiar ID do Usuário">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M8 2a2 2 0 00-2 2v2H4a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-2h2a2 2 0 002-2V4a2 2 0 00-2-2h-2zm4 2h-4v2a2 2 0 002 2h2V4z" />
+                        </svg>
+                    </button>
+                    <span id="copy-tooltip" class="tooltip">ID copiado!</span>
+                </div>
+            </div>
+            <div class="order-1 md:order-2 flex items-center mb-4 md:mb-0">
+                <button id="theme-toggle" class="p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 transition-colors duration-300 hover:bg-gray-300 dark:hover:bg-gray-600">
+                    <svg id="moon-icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+                    </svg>
+                    <svg id="sun-icon" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <main class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div id="ticket-create-view" class="md:col-span-1 bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">Criar Novo Ticket</h2>
+                <form id="new-ticket-form" class="space-y-4">
+                    <div>
+                        <label for="ticket-from" class="block text-sm font-medium text-gray-700">De (E-mail):</label>
+                        <input type="email" id="ticket-from" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="ticket-subject" class="block text-sm font-medium text-gray-700">Assunto:</label>
+                        <input type="text" id="ticket-subject" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="ticket-message" class="block text-sm font-medium text-gray-700">Mensagem:</label>
+                        <textarea id="ticket-message" rows="4" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"></textarea>
+                    </div>
+                    <button id="submit-ticket-btn" type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition-colors">
+                        Abrir Ticket
+                    </button>
+                    <div id="form-message" class="mt-4 text-center"></div>
+                </form>
+            </div>
+
+            <div id="ticket-list-view" class="md:col-span-1 bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">Tickets</h2>
+                <div class="mb-4">
+                    <input type="text" id="ticket-search-input" placeholder="Pesquisar por assunto, e-mail ou ID..." class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div class="flex flex-wrap gap-2 mb-4" id="ticket-filters">
+                    <button id="filter-all" class="px-4 py-2 text-sm font-medium rounded-full transition-colors bg-blue-600 text-white">Todos</button>
+                    <button id="filter-open" class="px-4 py-2 text-sm font-medium rounded-full transition-colors bg-gray-200 text-gray-800 hover:bg-gray-300">Aberto</button>
+                    <button id="filter-inprogress" class="px-4 py-2 text-sm font-medium rounded-full transition-colors bg-gray-200 text-gray-800 hover:bg-gray-300">Em Andamento</button>
+                    <button id="filter-closed" class="px-4 py-2 text-sm font-medium rounded-full transition-colors bg-gray-200 text-gray-800 hover:bg-gray-300">Fechado</button>
+                </div>
+                <div id="loading-tickets" class="text-center text-gray-500 hidden">Carregando tickets...</div>
+                <div id="tickets-container" class="space-y-4">
+                </div>
+            </div>
+
+            <div id="ticket-detail-view" class="md:col-span-1 hidden md:block bg-white p-6 rounded-xl shadow-lg border border-gray-200 relative">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4 view-header">Detalhes do Ticket</h2>
+                <button id="toggle-history-fullscreen-btn" class="absolute top-6 right-6 text-gray-700 hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-400 transition-colors">
+                    <svg id="expand-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+                    </svg>
+                    <svg id="close-icon" class="h-5 w-5 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+                <div id="selected-ticket-content">
+                    <p class="text-center text-gray-500">Selecione um ticket à esquerda para ver os detalhes.</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script type="text/javascript">
+        // Referências DOM
+        const ticketsContainer = document.getElementById('tickets-container');
+        const newTicketForm = document.getElementById('new-ticket-form');
+        const ticketDetailView = document.getElementById('ticket-detail-view');
+        const selectedTicketContent = document.getElementById('selected-ticket-content');
+        const copyUserIdBtn = document.getElementById('copy-user-id-btn');
+        const copyTooltip = document.getElementById('copy-tooltip');
+        const ticketCreateView = document.getElementById('ticket-create-view');
+        const ticketListView = document.getElementById('ticket-list-view');
+        const toggleFullscreenBtn = document.getElementById('toggle-history-fullscreen-btn');
+        const expandIcon = document.getElementById('expand-icon');
+        const closeIcon = document.getElementById('close-icon');
+        const formMessage = document.getElementById('form-message');
+        const filterButtons = document.getElementById('ticket-filters').querySelectorAll('button');
+        const ticketSearchInput = document.getElementById('ticket-search-input');
+        
+        // Elementos do modo escuro
+        const themeToggleBtn = document.getElementById('theme-toggle');
+        const body = document.body;
+        const moonIcon = document.getElementById('moon-icon');
+        const sunIcon = document.getElementById('sun-icon');
+        
+        // Nome do agente (em um sistema real, viria do login)
+        const AGENT_NAME = "Mateus Assis";
+        
+        let currentFilter = 'Todos';
+        let currentTicketId = null;
+
+        const mockTickets = [
+            { id: '1', subject: 'Problema com o Login', from: 'joao.silva@email.com', status: 'Aberto', createdAt: new Date(Date.now() - 1200000), messages: [{ text: 'Não consigo acessar minha conta.', timestamp: new Date(Date.now() - 1200000), author: 'joao.silva@email.com' }], is_read: false },
+            { id: '2', subject: 'Dúvida sobre a funcionalidade X', from: 'maria.souza@email.com', status: 'Em Andamento', assignedTo: 'suporte@empresa.com', createdAt: new Date(Date.now() - 3600000), messages: [{ text: 'Gostaria de saber como usar a funcionalidade X.', timestamp: new Date(Date.now() - 3600000), author: 'maria.souza@email.com' }, { text: 'Estamos verificando seu chamado. Em breve entraremos em contato.', timestamp: new Date(Date.now() - 1800000), author: 'suporte@empresa.com' }], is_read: false },
+            { id: '3', subject: 'Sugestão de melhoria na interface', from: 'carlos.pereira@email.com', status: 'Fechado', assignedTo: 'suporte@empresa.com', createdAt: new Date(Date.now() - 7200000), messages: [{ text: 'A interface poderia ser mais clara.', timestamp: new Date(Date.now() - 7200000), author: 'carlos.pereira@email.com' }, { text: 'Obrigado pela sua sugestão! Consideramos sua ideia e encerramos o ticket.', timestamp: new Date(Date.now() - 3600000), author: 'suporte@empresa.com' }], is_read: true },
+        ];
+
+        // Função para renderizar a lista de tickets a partir dos dados mock
+        function renderTickets(tickets) {
+            ticketsContainer.innerHTML = '';
+            const searchQuery = ticketSearchInput.value.toLowerCase();
+
+            // Primeiro, filtra pela pesquisa
+            const filteredBySearch = tickets.filter(ticket => {
+                const subject = ticket.subject.toLowerCase();
+                const from = ticket.from.toLowerCase();
+                const id = ticket.id.toLowerCase();
+                const assignedTo = ticket.assignedTo ? ticket.assignedTo.toLowerCase() : '';
+                return subject.includes(searchQuery) || from.includes(searchQuery) || id.includes(searchQuery) || assignedTo.includes(searchQuery);
+            });
+            
+            // Depois, filtra pelo status
+            const filteredTickets = filteredBySearch.filter(ticket => currentFilter === 'Todos' || ticket.status.toLowerCase() === currentFilter.toLowerCase());
+            
+            if (filteredTickets.length === 0) {
+                ticketsContainer.innerHTML = '<p class="text-center text-gray-500">Nenhum ticket encontrado.</p>';
+                return;
+            }
+
+            filteredTickets.forEach((ticket, index) => {
+                const ticketElement = document.createElement('div');
+                let statusColor = '';
+                switch (ticket.status) {
+                    case 'Aberto':
+                        statusColor = 'bg-green-200 text-green-800';
+                        break;
+                    case 'Em Andamento':
+                        statusColor = 'bg-yellow-200 text-yellow-800';
+                        break;
+                    case 'Fechado':
+                        statusColor = 'bg-red-200 text-red-800';
+                        break;
+                    default:
+                        statusColor = 'bg-gray-200 text-gray-800';
+                }
+
+                // Define a classe de fundo do ticket
+                const ticketBgClass = body.classList.contains('dark') && !ticket.is_read 
+                                ? 'new-ticket-highlight' 
+                                : (ticket.is_read ? 'bg-white' : 'bg-gray-100');
+
+                // Adiciona o número sequencial (apenas visualmente)
+                const ticketNumber = filteredTickets.length - index;
+                
+                // Exibe o responsável se o ticket estiver atribuído
+                const assignedToHtml = ticket.assignedTo ? `<span class="text-xs text-gray-500 mt-1 truncate">Responsável: ${ticket.assignedTo}</span>` : '';
+
+                ticketElement.className = `p-4 border border-gray-200 rounded-md shadow-sm cursor-pointer hover:bg-gray-50 transition-colors ${ticketBgClass}`;
+                ticketElement.dataset.id = ticket.id;
+                ticketElement.innerHTML = `
+                    <div class="flex items-center justify-between mb-2 pointer-events-none">
+                        <h3 class="text-lg font-semibold text-gray-800 truncate">#${ticketNumber} - ${ticket.subject}</h3>
+                        <div class="flex flex-col items-end">
+                            <span class="text-xs font-medium px-2 py-1 rounded-full ${statusColor}">${ticket.status}</span>
+                            ${assignedToHtml}
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-700 mb-1 pointer-events-none">De: ${ticket.from}</p>
+                    <p class="text-xs text-gray-700 pointer-events-none">Criado em: ${ticket.createdAt.toLocaleString()}</p>
+                `;
+                
+                // Adiciona o evento de clique esquerdo
+                ticketElement.addEventListener('click', () => selectTicketById(ticket.id, ticketNumber));
+
+                // Adiciona o evento de clique direito
+                ticketElement.addEventListener('contextmenu', (event) => {
+                    event.preventDefault();
+                    showContextMenu(event, ticket.id, ticketNumber);
+                });
+                
+                ticketsContainer.appendChild(ticketElement);
+            });
+        }
+        
+        function showContextMenu(event, ticketId, ticketNumber) {
+            // Remove qualquer menu de contexto existente
+            hideContextMenu();
+
+            const menu = document.createElement('div');
+            menu.className = 'context-menu';
+            menu.style.top = `${event.pageY}px`;
+            menu.style.left = `${event.pageX}px`;
+            menu.dataset.ticketId = ticketId;
+
+            const markAsUnreadItem = document.createElement('div');
+            markAsUnreadItem.className = 'context-menu-item';
+            markAsUnreadItem.textContent = 'Marcar como não lido';
+            markAsUnreadItem.addEventListener('click', () => {
+                const ticketToUpdate = mockTickets.find(t => t.id === ticketId);
+                if (ticketToUpdate) {
+                    ticketToUpdate.is_read = false;
+                    ticketToUpdate.status = 'Aberto';
+                    ticketToUpdate.assignedTo = null;
+                    renderTickets(mockTickets);
+                    
+                    // Se o ticket "desmarcado" estiver na visualização de detalhes, atualiza-o
+                    if (currentTicketId === ticketId) {
+                         selectedTicketContent.innerHTML = `<p class="text-center text-gray-500">Selecione um ticket à esquerda para ver os detalhes.</p>`;
+                         ticketDetailView.classList.add('hidden');
+                         currentTicketId = null;
+                    }
+                }
+                hideContextMenu();
+            });
+
+            menu.appendChild(markAsUnreadItem);
+            document.body.appendChild(menu);
+
+            // Adiciona um listener para fechar o menu ao clicar em qualquer lugar
+            document.addEventListener('click', hideContextMenu);
+        }
+
+        function hideContextMenu() {
+            const menu = document.querySelector('.context-menu');
+            if (menu) {
+                menu.remove();
+                document.removeEventListener('click', hideContextMenu);
+            }
+        }
+        
+        // Nova função para selecionar um ticket por ID e número visual
+        function selectTicketById(id, number) {
+            const ticket = mockTickets.find(t => t.id === id);
+            if (ticket) {
+                currentTicketId = id; // Define o ticket atual
+                ticket.is_read = true; // Marca o ticket como lido
+                renderTickets(mockTickets); // Re-renderiza a lista para atualizar a cor de fundo
+                renderTicketDetail(ticket, number);
+                ticketDetailView.classList.remove('hidden');
+            }
+        }
+
+        // Renderizar o conteúdo detalhado do ticket a partir dos dados mock
+        function renderTicketDetail(ticket, number) {
+            let statusColor = '';
+            switch (ticket.status) {
+                case 'Aberto': statusColor = 'bg-green-500'; break;
+                case 'Em Andamento': statusColor = 'bg-yellow-500'; break;
+                case 'Fechado': statusColor = 'bg-red-500'; break;
+            }
+
+            const messagesHtml = (ticket.messages || []).map(msg => {
+                const isAgent = msg.author === AGENT_NAME;
+                const authorDisplay = isAgent ? `Você (${AGENT_NAME})` : msg.author;
+                const messageClass = isAgent ? 'bg-blue-100 border-blue-200' : 'bg-gray-50 border-gray-200';
+                
+                // Adiciona a classe para destaque no modo escuro
+                const highlightClass = body.classList.contains('dark') ? 'text-highlight-date-dark' : 'text-gray-400';
+                const highlightAuthorClass = body.classList.contains('dark') ? 'text-highlight-dark' : 'text-gray-800';
+
+                return `
+                    <div class="p-3 rounded-lg shadow-sm mb-2 border ${messageClass}">
+                        <p class="text-sm text-gray-600 message-content">${msg.text}</p>
+                        <p class="text-xs ${highlightClass} mt-1">
+                            Enviado por <span class="font-semibold ${highlightAuthorClass}">${authorDisplay}</span> em ${msg.timestamp.toLocaleString()}
+                        </p>
+                    </div>
+                `;
+            }).join('');
+            
+            // Exibir o ID do usuário atribuído se ele existir
+            const assignedToHtml = ticket.assignedTo ? 
+                `<p class="text-sm text-gray-600">Atribuído a: <span class="font-medium text-gray-800">${ticket.assignedTo}</span></p>` : '';
+
+            let actionSectionHtml = '';
+
+            // Lógica para o painel de ação
+            if (ticket.status === 'Aberto') {
+                actionSectionHtml = `
+                    <div id="accept-ticket-section" class="mt-4 p-4 border rounded-lg bg-gray-50 shadow-inner">
+                        <button id="accept-ticket-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md transition-colors">
+                            Aceitar Ticket
+                        </button>
+                    </div>
+                `;
+            } else if (ticket.status === 'Em Andamento') {
+                actionSectionHtml = `
+                    <div id="update-status-section" class="mt-4 p-4 border rounded-lg bg-gray-50 shadow-inner">
+                        <label for="status-select" class="block text-sm font-medium text-gray-700 mb-2">Atualizar Status</label>
+                        <div>
+                            <select id="status-select" class="block w-full px-3 py-2 mb-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                <option value="Aberto">Aberto</option>
+                                <option value="Em Andamento">Em Andamento</option>
+                                <option value="Fechado">Fechado</option>
+                            </select>
+                            <button id="update-status-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition-colors">
+                                Salvar
+                            </button>
+                        </div>
+                        <div id="update-message" class="mt-2 text-center text-sm"></div>
+                    </div>
+                `;
+            } else if (ticket.status === 'Fechado') {
+                 actionSectionHtml = `
+                    <div id="reopen-ticket-section" class="mt-4 p-4 border rounded-lg bg-gray-50 shadow-inner">
+                        <button id="reopen-ticket-btn" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-md transition-colors">
+                            Reabrir Ticket
+                        </button>
+                    </div>
+                `;
+            }
+
+            // A seção de resposta só deve ser mostrada se o ticket não estiver fechado
+            const replySectionHtml = ticket.status !== 'Fechado' ? `
+                <div id="reply-to-ticket-section" class="mt-4 p-4 border rounded-lg bg-gray-50 shadow-inner">
+                    <h4 class="font-semibold text-gray-700 mb-2">Responder</h4>
+                    <textarea id="reply-message" rows="3" placeholder="Digite sua resposta aqui..." class="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"></textarea>
+                    <button id="reply-btn" class="w-full mt-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition-colors">
+                        Enviar Resposta
+                    </button>
+                    <div id="reply-message-status" class="mt-2 text-center text-sm"></div>
+                </div>
+            ` : '';
+
+            // Adiciona a classe para destacar o texto de data no modo escuro
+            const createdDateClass = body.classList.contains('dark') ? 'text-highlight-date-dark' : 'text-gray-400';
+
+            selectedTicketContent.innerHTML = `
+                <div class="flex items-center justify-between mb-4 border-b pb-2 view-header-content">
+                    <h3 class="text-xl font-bold text-gray-800">Assunto: #${number} - ${ticket.subject}</h3>
+                    <div class="flex items-center space-x-2">
+                        <span class="w-3 h-3 rounded-full ${statusColor}"></span>
+                        <span class="text-gray-600">${ticket.status}</span>
+                    </div>
+                </div>
+                <div class="mb-4 space-y-1 view-header-content">
+                    <p class="text-sm text-gray-600">De: <span class="font-medium text-gray-600">${ticket.from}</span></p>
+                    <p class="text-sm text-gray-600">ID: <span class="font-medium text-gray-800">${ticket.id}</span></p>
+                    ${assignedToHtml}
+                </div>
+                
+                <div id="ticket-history-panel" class="ticket-history-panel max-h-64 overflow-y-auto mb-4 border border-gray-300 p-3 rounded-lg bg-white">
+                    <h4 class="font-semibold text-gray-700 mb-2">Histórico</h4>
+                    ${messagesHtml}
+                </div>
+                
+                <div id="action-and-reply-section">
+                    ${replySectionHtml}
+                    ${actionSectionHtml}
+                </div>
+            `;
+            
+            // Adicionar lógica de atualização de status
+            const statusSelect = document.getElementById('status-select');
+            const updateStatusBtn = document.getElementById('update-status-btn');
+            const updateMessage = document.getElementById('update-message');
+
+            if (statusSelect) {
+                statusSelect.value = ticket.status;
+                updateStatusBtn.addEventListener('click', () => {
+                    const newStatus = statusSelect.value;
+                    const ticketToUpdate = mockTickets.find(t => t.id === ticket.id);
+                    if (ticketToUpdate) {
+                        ticketToUpdate.status = newStatus;
+                        if (newStatus === 'Em Andamento' && !ticketToUpdate.assignedTo) {
+                            ticketToUpdate.assignedTo = AGENT_NAME;
+                        } else if (newStatus === 'Aberto') {
+                            ticketToUpdate.assignedTo = null;
+                        }
+                        updateMessage.textContent = 'Status atualizado com sucesso!';
+                        updateMessage.classList.add('text-green-600');
+                        setTimeout(() => {
+                            updateMessage.textContent = '';
+                            updateMessage.classList.remove('text-green-600');
+                        }, 2000);
+                        renderTickets(mockTickets); // Re-renderiza a lista para atualizar a cor do status
+                        renderTicketDetail(ticketToUpdate, number); // Re-renderiza os detalhes com o novo status
+                    }
+                });
+            }
+            
+            // Lógica para o botão "Reabrir"
+            const reopenTicketBtn = document.getElementById('reopen-ticket-btn');
+            if (reopenTicketBtn) {
+                reopenTicketBtn.addEventListener('click', () => {
+                    const ticketToUpdate = mockTickets.find(t => t.id === ticket.id);
+                    if (ticketToUpdate) {
+                        ticketToUpdate.status = 'Em Andamento';
+                        ticketToUpdate.assignedTo = AGENT_NAME;
+                        renderTickets(mockTickets);
+                        renderTicketDetail(ticketToUpdate, number);
+                    }
+                });
+            }
+
+            // Lógica para o botão "Aceitar"
+            const acceptTicketBtn = document.getElementById('accept-ticket-btn');
+            if (acceptTicketBtn) {
+                acceptTicketBtn.addEventListener('click', () => {
+                    const ticketToUpdate = mockTickets.find(t => t.id === ticket.id);
+                    if (ticketToUpdate) {
+                        ticketToUpdate.status = 'Em Andamento';
+                        ticketToUpdate.assignedTo = AGENT_NAME;
+                        renderTickets(mockTickets);
+                        renderTicketDetail(ticketToUpdate, number);
+                    }
+                });
+            }
+
+            // Lógica para responder ao ticket
+            const replyBtn = document.getElementById('reply-btn');
+            if (replyBtn) {
+                const replyMessageTextarea = document.getElementById('reply-message');
+                const replyMessageStatus = document.getElementById('reply-message-status');
+
+                replyBtn.addEventListener('click', () => {
+                    const replyText = replyMessageTextarea.value.trim();
+                    if (replyText === '') {
+                        replyMessageStatus.textContent = 'Por favor, digite uma mensagem.';
+                        replyMessageStatus.classList.add('text-red-600');
+                        return;
+                    }
+
+                    const ticketToReply = mockTickets.find(t => t.id === currentTicketId);
+                    if (ticketToReply) {
+                        ticketToReply.messages.push({
+                            text: replyText,
+                            timestamp: new Date(),
+                            author: AGENT_NAME // Adiciona o nome do agente
+                        });
+
+                        // Limpa a caixa de texto e exibe uma mensagem de sucesso
+                        replyMessageTextarea.value = '';
+                        replyMessageStatus.textContent = 'Resposta enviada!';
+                        replyMessageStatus.classList.add('text-green-600');
+                        
+                        // Re-renderiza o painel de detalhes para mostrar a nova mensagem
+                        renderTicketDetail(ticketToReply, number);
+                        
+                        // Rola o histórico de mensagens para o final
+                        setTimeout(() => {
+                            const historyPanel = document.getElementById('ticket-history-panel');
+                            historyPanel.scrollTop = historyPanel.scrollHeight;
+                            replyMessageStatus.textContent = '';
+                            replyMessageStatus.classList.remove('text-green-600');
+                        }, 1000);
+                    }
+                });
+            }
+        }
+
+        // Lidar com o envio do formulário e adicionar o ticket aos dados mock
+        newTicketForm.onsubmit = async (event) => {
+            event.preventDefault();
+
+            const subject = document.getElementById('ticket-subject').value;
+            const from = document.getElementById('ticket-from').value;
+            const message = document.getElementById('ticket-message').value;
+
+            if (!subject || !from || !message) {
+                formMessage.textContent = "Por favor, preencha todos os campos.";
+                formMessage.classList.add('text-red-600');
+                return;
+            }
+
+            formMessage.textContent = "Simulando o envio...";
+            formMessage.classList.remove('text-red-600', 'text-green-600');
+            formMessage.classList.add('text-yellow-600');
+
+            setTimeout(() => {
+                const newTicket = {
+                    id: crypto.randomUUID(), // Gera um ID único para o novo ticket
+                    subject: subject,
+                    from: from,
+                    status: 'Aberto',
+                    createdAt: new Date(),
+                    messages: [{ text: message, timestamp: new Date(), author: from }],
+                    is_read: false // Novo ticket é não lido
+                };
+
+                mockTickets.unshift(newTicket); // Adiciona o novo ticket no início do array
+                renderTickets(mockTickets); // Re-renderiza a lista de tickets
+
+                newTicketForm.reset();
+                formMessage.textContent = "Ticket aberto com sucesso!";
+                formMessage.classList.remove('text-yellow-600');
+                formMessage.classList.add('text-green-600');
+            }, 1500);
+        };
+        
+        // Função para alternar o modo de tela cheia do histórico
+        function toggleHistoryFullscreen() {
+            const historyPanel = document.getElementById('ticket-history-panel');
+            const viewHeaderContent = document.querySelectorAll('.view-header-content');
+            
+            const isFullscreen = ticketDetailView.classList.contains('is-fullscreen');
+            
+            // Alterna as classes de tela cheia
+            ticketDetailView.classList.toggle('is-fullscreen', !isFullscreen);
+            historyPanel.classList.toggle('ticket-history-panel-fullscreen', !isFullscreen);
+
+            // Oculta ou exibe os outros elementos no painel de detalhes
+            viewHeaderContent.forEach(el => el.classList.toggle('hidden', !isFullscreen));
+            
+            // Oculta ou exibe as outras colunas
+            ticketCreateView.classList.toggle('hidden', !isFullscreen);
+            ticketListView.classList.toggle('hidden', !isFullscreen);
+            
+            // Alterna os ícones do botão
+            expandIcon.classList.toggle('hidden', !isFullscreen);
+            closeIcon.classList.toggle('hidden', isFullscreen);
+            
+            // Garante que o histórico fique no topo ao expandir
+            if (!isFullscreen) {
+                historyPanel.scrollTop = 0;
+            } else {
+                 historyPanel.scrollTop = historyPanel.scrollHeight;
+            }
+        }
+
+        // Função para copiar o ID do usuário (estático)
+        function copyUserId() {
+            const userId = 'a1b2c3d4-e5f6-7g8h-i9j0';
+            if (userId) {
+                navigator.clipboard.writeText(userId).then(() => {
+                    copyTooltip.classList.add('show');
+                    setTimeout(() => {
+                        copyTooltip.classList.remove('show');
+                    }, 2000);
+                }).catch(err => {
+                    console.error('Falha ao copiar o ID: ', err);
+                });
+            }
+        }
+        
+        // Lógica para alternar o modo escuro
+        function toggleDarkMode() {
+            body.classList.toggle('dark');
+            const isDarkMode = body.classList.contains('dark');
+            if (isDarkMode) {
+                moonIcon.classList.add('hidden');
+                sunIcon.classList.remove('hidden');
+            } else {
+                moonIcon.classList.remove('hidden');
+                sunIcon.classList.add('hidden');
+            }
+            // Salva a preferência do usuário no localStorage
+            localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
+            
+            // Re-renderiza a lista de tickets para aplicar o estilo correto
+            renderTickets(mockTickets);
+        }
+
+        // Verifica a preferência do usuário ao carregar a página
+        function checkThemePreference() {
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const savedTheme = localStorage.getItem('theme');
+            
+            if (savedTheme === 'dark' || (savedTheme === null && prefersDark)) {
+                body.classList.add('dark');
+                moonIcon.classList.add('hidden');
+                sunIcon.classList.remove('hidden');
+            }
+        }
+
+        window.onload = () => {
+            checkThemePreference(); // Checa o tema preferido antes de renderizar
+            renderTickets(mockTickets);
+
+            copyUserIdBtn.addEventListener('click', copyUserId);
+            toggleFullscreenBtn.addEventListener('click', toggleHistoryFullscreen);
+            themeToggleBtn.addEventListener('click', toggleDarkMode);
+
+            // Lógica para os botões de filtro
+            filterButtons.forEach(button => {
+                button.addEventListener('click', (event) => {
+                    // Remove a classe de todos os botões e adiciona ao clicado
+                    filterButtons.forEach(btn => {
+                        btn.classList.remove('bg-blue-600', 'text-white');
+                        btn.classList.add('bg-gray-200', 'text-gray-800', 'hover:bg-gray-300');
+                    });
+                    event.target.classList.remove('bg-gray-200', 'text-gray-800', 'hover:bg-gray-300');
+                    event.target.classList.add('bg-blue-600', 'text-white');
+                    
+                    currentFilter = event.target.textContent.trim();
+                    renderTickets(mockTickets);
+                });
+            });
+
+            // Lógica para a barra de pesquisa
+            ticketSearchInput.addEventListener('input', () => {
+                renderTickets(mockTickets);
+            });
+        };
+    </script>
+
+</body>
+</html>
