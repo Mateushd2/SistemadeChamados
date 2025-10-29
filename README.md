@@ -1,4 +1,4 @@
-# Sistema de Chamados (Apenas Frontend)
+# Sistema de Chamados 
 
 Este é um projeto de frontend para um sistema de chamados, desenvolvido para simular a criação, visualização e gerenciamento de tickets de suporte. O projeto é construído com HTML, CSS (usando Tailwind CSS) e JavaScript puro.
 
