@@ -36,10 +36,3 @@ O objetivo principal deste projeto é demonstrar a criação de uma interface de
 
 ## Como Executar o Projeto
 
-Como este é um projeto de frontend estático, você só precisa de um navegador para executá-lo.
-
-1.  **Clone o repositório** (se estiver hospedado) ou baixe o arquivo `index.html`.
-2.  **Abra o arquivo `index.html`** em seu navegador preferido (Chrome, Firefox, Edge, etc.).
-3.  O sistema estará pronto para ser usado.
-
-Não há necessidade de instalar dependências ou configurar um servidor local, pois o projeto não possui backend.
