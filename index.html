@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Chamados (Mono-Agente)</title>
+    <title>Sistema de Chamados</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -113,7 +114,7 @@
     
     <div id="login-view" class="flex flex-col items-center justify-center min-h-screen p-4">
         <div class="w-full max-w-md bg-white p-8 rounded-xl shadow-lg border border-gray-200">
-            <h1 class="text-3xl font-extrabold text-gray-900 text-center mb-6">Acesso ao Painel do Agente</h1>
+            <h1 class="text-3xl font-extrabold text-gray-900 text-center mb-6">Login</h1>
             <form id="login-form" class="space-y-6">
                 <div>
                     <label for="login-email" class="block text-sm font-medium text-gray-700">E-mail</label>
@@ -157,6 +158,11 @@
                     </div>
                 </div>
                 <div class="order-1 md:order-2 flex items-center mb-4 md:mb-0 space-x-3">
+                    <button id="reports-btn" class="p-2 rounded-full bg-blue-500 hover:bg-blue-600 text-white transition-colors duration-300" title="Relatórios">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                    </button>
                     <button id="logout-btn" class="p-2 rounded-full bg-red-500 hover:bg-red-600 text-white transition-colors duration-300" title="Sair (Logout)">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -229,7 +235,65 @@
             </main>
         </div>
     </div>
+    
+    <div id="reports-dashboard" class="hidden">
+        <div class="container mx-auto p-4 md:p-8">
+            <header class="mb-6 flex justify-between items-center border-b pb-4">
+                <h1 class="text-4xl md:text-5xl font-extrabold text-gray-900 dark:text-gray-100">Dashboard de Relatórios</h1>
+                <button id="close-reports-btn" class="p-2 rounded-full bg-red-500 hover:bg-red-600 text-white transition-colors duration-300" title="Voltar ao Painel">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </header>
 
+            <main class="space-y-8">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200 dark:bg-gray-800 dark:border-gray-700">
+                        <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total de Tickets Abertos</p>
+                        <p id="kpi-total-open" class="text-3xl font-bold text-gray-900 dark:text-gray-100 mt-1">3</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200 dark:bg-gray-800 dark:border-gray-700">
+                        <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Tempo Médio de Resposta</p>
+                        <p id="kpi-avg-response" class="text-3xl font-bold text-gray-900 dark:text-gray-100 mt-1">45 min</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200 dark:bg-gray-800 dark:border-gray-700">
+                        <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Tickets Fechados (Hoje)</p>
+                        <p id="kpi-closed-today" class="text-3xl font-bold text-gray-900 dark:text-gray-100 mt-1">0</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200 dark:bg-gray-800 dark:border-gray-700">
+                        <h3 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">Distribuição por Status</h3>
+                        <div class="h-64 flex items-center justify-center">
+                            <canvas id="statusChart"></canvas> </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200 dark:bg-gray-800 dark:border-gray-700">
+                        <h3 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">Distribuição por Prioridade</h3>
+                        <div class="h-64 flex items-center justify-center">
+                            <canvas id="priorityChart"></canvas> </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200 dark:bg-gray-800 dark:border-gray-700 overflow-x-auto">
+                    <h3 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">Tickets Mais Recentes</h3>
+                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
+                        <thead class="bg-gray-50 dark:bg-gray-700">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">ID</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Assunto</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Prioridade</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reports-table-body" class="bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-600">
+                            </tbody>
+                    </table>
+                </div>
+            </main>
+        </div>
+    </div>
     <script type="text/javascript">
         const loginView = document.getElementById('login-view');
         const mainApp = document.getElementById('main-app');
@@ -260,6 +324,16 @@
         const sunIcon = document.getElementById('sun-icon');
         const loginMoonIcon = document.getElementById('login-moon-icon');
         const loginSunIcon = document.getElementById('login-sun-icon');
+
+        // NOVOS ELEMENTOS DO DASHBOARD
+        const reportsBtn = document.getElementById('reports-btn');
+        const reportsDashboard = document.getElementById('reports-dashboard');
+        const closeReportsBtn = document.getElementById('close-reports-btn');
+        const reportsTableBody = document.getElementById('reports-table-body');
+        
+        // NOVAS VARIÁVEIS PARA AS INSTÂNCIAS DO CHART.JS
+        let statusChartInstance = null;
+        let priorityChartInstance = null;
         
         const AGENT_NAME = "Mateus Assis";
         let currentFilter = 'Todos';
@@ -270,6 +344,60 @@
             { id: '2', subject: 'Dúvida sobre a funcionalidade X', from: 'maria.souza@email.com', status: 'Em Andamento', priority: 'Média', assignedTo: AGENT_NAME, createdAt: new Date(Date.now() - 3600000), messages: [{ text: 'Gostaria de saber como usar a funcionalidade X.', timestamp: new Date(Date.now() - 3600000), author: 'maria.souza@email.com' }, { text: 'Estamos verificando seu chamado. Em breve entraremos em contato.', timestamp: new Date(Date.now() - 1800000), author: AGENT_NAME }], is_read: false },
             { id: '3', subject: 'Sugestão de melhoria na interface', from: 'carlos.pereira@email.com', status: 'Fechado', priority: 'Baixa', assignedTo: AGENT_NAME, createdAt: new Date(Date.now() - 7200000), messages: [{ text: 'A interface poderia ser mais clara.', timestamp: new Date(Date.now() - 7200000), author: 'carlos.pereira@email.com' }, { text: 'Obrigado pela sua sugestão! Consideramos sua ideia e encerramos o ticket.', timestamp: new Date(Date.now() - 3600000), author: AGENT_NAME }], is_read: true },
         ];
+        
+        // --- NOVO: Dados e Funções da Base de Conhecimento (KB) ---
+        
+        // Mock Data for Knowledge Base Articles
+        const mockKbArticles = [
+            { id: 'kb-1', title: 'Guia de Recuperação de Senha', content: 'Prezado cliente, para recuperar sua senha, acesse o link [LINK DE RECUPERAÇÃO] e siga os passos. Se o problema persistir, anexe um print do erro.' },
+            { id: 'kb-2', title: 'Como Reportar um Bug', content: 'Para reportar um bug, inclua as seguintes informações: 1. Etapas para reproduzir. 2. Qual o seu navegador. 3. Captura de tela do erro.' },
+            { id: 'kb-3', title: 'Link do Manual do Usuário', content: 'Você pode encontrar a solução completa no nosso Manual do Usuário: [LINK DO MANUAL DO USUÁRIO]' }
+        ];
+
+        // Função que insere o conteúdo no campo de resposta
+        function insertKbContent(textToInsert) {
+            const replyMessageTextarea = document.getElementById('reply-message');
+            if (replyMessageTextarea) {
+                // Anexa o conteúdo com separação para formatação
+                replyMessageTextarea.value += (replyMessageTextarea.value.length > 0 ? '\n\n---\n\n' : '') + textToInsert;
+                replyMessageTextarea.focus();
+                
+                // Esconde o painel da KB após a inserção (melhorando UX)
+                const kbModal = document.getElementById('kb-simulated-modal');
+                if (kbModal) kbModal.classList.add('hidden');
+            }
+        }
+        
+        // Função que renderiza a lista de artigos e adiciona os listeners de clique
+        function renderKbArticles() {
+            const kbArticlesList = document.getElementById('kb-articles-list');
+            if (!kbArticlesList) return;
+
+            kbArticlesList.innerHTML = mockKbArticles.map(article => {
+                const contentPreview = article.content.substring(0, 80) + '...';
+                return `
+                    <div data-kb-id="${article.id}" 
+                         class="kb-article-item p-3 border border-gray-200 dark:border-gray-600 rounded-md cursor-pointer hover:bg-purple-50 dark:hover:bg-purple-900 transition-colors">
+                        <h6 class="font-semibold text-gray-800 dark:text-gray-100">${article.title}</h6>
+                        <p class="text-sm text-gray-600 dark:text-gray-400 mt-1 truncate">${contentPreview}</p>
+                    </div>
+                `;
+            }).join('');
+
+            // Adiciona o listener de clique que chama insertKbContent()
+            document.querySelectorAll('.kb-article-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const articleId = item.dataset.kbId;
+                    const article = mockKbArticles.find(a => a.id === articleId);
+                    
+                    if (article) {
+                        insertKbContent(article.content);
+                    }
+                });
+            });
+        }
+        // --- FIM NOVO: Dados e Funções da Base de Conhecimento (KB) ---
+        
 
         // --- Funções de Navegação e Autenticação (Novas) ---
 
@@ -277,14 +405,185 @@
             if (isLoggedIn) {
                 loginView.classList.add('hidden');
                 mainApp.classList.remove('hidden');
+                reportsDashboard.classList.add('hidden'); 
                 checkThemePreference();
                 renderTickets(mockTickets);
             } else {
                 mainApp.classList.add('hidden');
                 ticketDetailView.classList.add('hidden');
+                reportsDashboard.classList.add('hidden'); 
                 loginView.classList.remove('hidden');
             }
         }
+        
+        // NOVO: Função para exibir o Dashboard de Relatórios
+        function showReportsDashboard() {
+            mainApp.classList.add('hidden');
+            reportsDashboard.classList.remove('hidden');
+            renderReports(); // Chama a função que popula o dashboard e os gráficos
+        }
+
+        // NOVO: Função para ocultar o Dashboard de Relatórios
+        function hideReportsDashboard() {
+            reportsDashboard.classList.add('hidden');
+            mainApp.classList.remove('hidden');
+        }
+        
+        // NOVO: Função para renderizar os Gráficos de Status e Prioridade
+        function renderCharts() {
+            // 1. Processar dados para Status
+            const statusCounts = {};
+            mockTickets.forEach(ticket => {
+                statusCounts[ticket.status] = (statusCounts[ticket.status] || 0) + 1;
+            });
+            
+            const statusLabels = Object.keys(statusCounts);
+            const statusData = Object.values(statusCounts);
+            const statusColors = statusLabels.map(label => {
+                switch (label) {
+                    case 'Aberto': return '#48BB78'; // Green
+                    case 'Em Andamento': return '#F6E05E'; // Yellow
+                    case 'Fechado': return '#F56565'; // Red
+                    default: return '#A0AEC0'; // Gray
+                }
+            });
+
+            // Destruir instância anterior se existir
+            if (statusChartInstance) {
+                statusChartInstance.destroy();
+            }
+
+            const statusCtx = document.getElementById('statusChart').getContext('2d');
+            statusChartInstance = new Chart(statusCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: statusLabels,
+                    datasets: [{
+                        data: statusData,
+                        backgroundColor: statusColors,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                // Ajusta a cor da legenda para o tema
+                                color: body.classList.contains('dark') ? '#cbd5e0' : '#4a5568'
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // 2. Processar dados para Prioridade
+            const priorityCounts = {};
+            mockTickets.forEach(ticket => {
+                priorityCounts[ticket.priority] = (priorityCounts[ticket.priority] || 0) + 1;
+            });
+
+            const priorityLabels = Object.keys(priorityCounts);
+            const priorityData = Object.values(priorityCounts);
+            const priorityColors = priorityLabels.map(label => {
+                switch (label) {
+                    case 'Urgente': return '#9F7AEA'; // Purple
+                    case 'Alta': return '#F56565'; // Red
+                    case 'Média': return '#F6E05E'; // Yellow
+                    case 'Baixa': return '#A0AEC0'; // Gray
+                    default: return '#A0AEC0';
+                }
+            });
+            
+            // Destruir instância anterior
+            if (priorityChartInstance) {
+                priorityChartInstance.destroy();
+            }
+
+            const priorityCtx = document.getElementById('priorityChart').getContext('2d');
+            priorityChartInstance = new Chart(priorityCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: priorityLabels,
+                    datasets: [{
+                        data: priorityData,
+                        backgroundColor: priorityColors,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                // Ajusta a cor da legenda para o tema
+                                color: body.classList.contains('dark') ? '#cbd5e0' : '#4a5568'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // NOVO: Função para renderizar os dados de Relatórios (Simulação)
+        function renderReports() {
+            // 1. Calcular KPIs
+            const totalOpen = mockTickets.filter(t => t.status === 'Aberto').length;
+            const totalClosedToday = mockTickets.filter(t => 
+                t.status === 'Fechado' && t.createdAt.toDateString() === new Date().toDateString()
+            ).length;
+            
+            document.getElementById('kpi-total-open').textContent = totalOpen;
+            document.getElementById('kpi-closed-today').textContent = totalClosedToday;
+            
+            // 2. Popular Tabela de Tickets Recentes
+            reportsTableBody.innerHTML = '';
+            const recentTickets = [...mockTickets].sort((a, b) => b.createdAt - a.createdAt).slice(0, 5); // 5 mais recentes
+
+            recentTickets.forEach(ticket => {
+                let statusColor = '';
+                let priorityColor = '';
+                
+                switch (ticket.status) {
+                    case 'Aberto': statusColor = 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'; break;
+                    case 'Em Andamento': statusColor = 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300'; break;
+                    case 'Fechado': statusColor = 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'; break;
+                }
+
+                switch (ticket.priority) {
+                    case 'Urgente': priorityColor = 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300'; break;
+                    case 'Alta': priorityColor = 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'; break;
+                    default: priorityColor = 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+                }
+
+                const row = reportsTableBody.insertRow();
+                row.className = 'hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors';
+                
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">${ticket.id.substring(0, 8)}...</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300 truncate max-w-xs">${ticket.subject}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColor}">
+                            ${ticket.status}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${priorityColor}">
+                            ${ticket.priority}
+                        </span>
+                    </td>
+                `;
+            });
+            
+            // 3. Renderizar Gráficos
+            renderCharts(); 
+        }
+        // FIM NOVO: Dashboard de Relatórios
+        
 
         loginForm.onsubmit = (event) => {
             event.preventDefault();
@@ -522,12 +821,29 @@
                 <div id="reply-to-ticket-section" class="mt-4 p-4 border rounded-lg bg-gray-50 shadow-inner dark:bg-gray-700">
                     <h4 class="font-semibold text-gray-700 dark:text-gray-400 mb-2">Responder ao Cliente (E-mail)</h4>
                     <textarea id="reply-message" rows="3" placeholder="Digite sua resposta aqui..." class="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"></textarea>
+                    
+                    <button id="toggle-kb-modal-btn" class="w-full mt-2 bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-md transition-colors flex items-center justify-center space-x-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.203 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.523 5.797 18 7.5 18s3.332.477 4.5 1.247m0-13c1.168.776 2.797 1.247 4.5 1.247 1.703 0 3.332-.477 4.5-1.247M12 6.253v13" />
+                        </svg>
+                        <span>Buscar na Base de Conhecimento</span>
+                    </button>
+                    
                     <button id="reply-btn" class="w-full mt-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition-colors">
                         Enviar Resposta
                     </button>
                     <div id="reply-message-status" class="mt-2 text-center text-sm"></div>
                 </div>
                 
+                <div id="kb-simulated-modal" class="hidden absolute inset-0 z-10 p-4 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-purple-300 dark:border-purple-700">
+                    <div class="flex justify-between items-center mb-4 pb-2 border-b">
+                        <h5 class="text-lg font-bold text-purple-600 dark:text-purple-400">Artigos da Base de Conhecimento</h5>
+                        <button id="close-kb-modal-btn" class="text-gray-500 hover:text-gray-900 dark:hover:text-white font-bold text-xl">&times;</button>
+                    </div>
+                    <div id="kb-articles-list" class="space-y-2 overflow-y-auto max-h-64">
+                        </div>
+                </div>
+
                 <div id="internal-note-section" class="mt-4 p-4 border rounded-lg bg-gray-50 shadow-inner dark:bg-gray-700">
                     <h4 class="font-semibold text-gray-700 dark:text-gray-400 mb-2">Nota Interna (Não enviada ao cliente)</h4>
                     <textarea id="internal-note-message" rows="3" placeholder="Registre uma observação para a equipe..." class="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-purple-500 focus:border-purple-500"></textarea>
@@ -659,6 +975,26 @@
                     }
                 });
             }
+            
+            // Lógica para Base de Conhecimento (Simulação)
+            const toggleKbModalBtn = document.getElementById('toggle-kb-modal-btn');
+            const kbModal = document.getElementById('kb-simulated-modal');
+            const closeKbModalBtn = document.getElementById('close-kb-modal-btn');
+
+            if (toggleKbModalBtn) {
+                toggleKbModalBtn.addEventListener('click', () => {
+                    kbModal.classList.toggle('hidden');
+                    if (!kbModal.classList.contains('hidden')) {
+                        renderKbArticles(); // Renderiza os artigos ao abrir
+                    }
+                });
+            }
+            if (closeKbModalBtn) {
+                closeKbModalBtn.addEventListener('click', () => {
+                    kbModal.classList.add('hidden');
+                });
+            }
+
             
             // Lógica para Notas Internas 
             const internalNoteBtn = document.getElementById('internal-note-btn');
@@ -805,6 +1141,9 @@
                     const currentTicket = mockTickets.find(t => t.id === currentTicketId);
                     if(currentTicket) renderTicketDetail(currentTicket, 'X'); 
                  }
+            } else if (!reportsDashboard.classList.contains('hidden')) {
+                // Se estiver no dashboard, re-renderiza os relatórios para o tema
+                renderReports(); // Chamará renderCharts() para atualizar as cores das legendas
             }
         }
 
@@ -838,6 +1177,10 @@
             // Adiciona listeners para os botões de tema (tanto no login quanto na app)
             if (themeToggleBtn) themeToggleBtn.addEventListener('click', toggleDarkMode);
             if (loginThemeToggleBtn) loginThemeToggleBtn.addEventListener('click', toggleDarkMode);
+
+            // NOVOS LISTENERS PARA O DASHBOARD
+            if (reportsBtn) reportsBtn.addEventListener('click', showReportsDashboard);
+            if (closeReportsBtn) closeReportsBtn.addEventListener('click', hideReportsDashboard);
 
             // Lógica para os botões de filtro 
             filterButtons.forEach(button => {
