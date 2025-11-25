@@ -1,12 +1,10 @@
 # Sistema de Chamados 
 
-Este é um projeto de frontend para um sistema de chamados, desenvolvido para simular a criação, visualização e gerenciamento de tickets de suporte. O projeto é construído com HTML, CSS (usando Tailwind CSS) e JavaScript puro.
+Este é um projeto para um sistema de chamados mono-agente, desenvolvido para a criação, visualização e gerenciamento de tickets de suporte. O projeto é construído com HTML, CSS (usando Tailwind CSS), JavaScript e Python.
 
 ## Visão Geral do Projeto
 
-O objetivo principal deste projeto é demonstrar a criação de uma interface de usuário responsiva e interativa para um sistema de tickets. Ele simula o fluxo de trabalho de um agente de suporte, permitindo que o usuário crie novos tickets, visualize o histórico de mensagens, responda aos clientes e atualize o status dos chamados.
-
-Todo o gerenciamento de dados é feito em memória, utilizando um array de objetos JavaScript, o que torna o projeto ideal para prototipagem e para testar a funcionalidade da interface do usuário.
+O objetivo principal deste projeto é demonstrar a criação de uma interface de usuário responsiva e interativa para um sistema de tickets. Ele mostra o fluxo de trabalho de um agente de suporte, permitindo que o usuário crie novos tickets, visualize o histórico de mensagens, responda aos clientes e atualize o status dos chamados.
 
 ## Recursos (Features)
 
