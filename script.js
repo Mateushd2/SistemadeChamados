@@ -103,6 +103,22 @@ const loginView = document.getElementById('login-view');
         // --- FIM NOVO: Dados e Funções da Base de Conhecimento (KB) ---
         
 
+        // NOVO: Função para verificar se ticket está fora do SLA
+        function isTicketOutOfSLA(ticket) {
+            const now = new Date();
+            const createdAt = new Date(ticket.createdAt);
+            const hoursDiff = (now - createdAt) / (1000 * 60 * 60);
+            
+            // Define SLA baseado na prioridade (em horas)
+            const slaHours = {
+                'Alta': 2,
+                'Normal': 8,
+                'Baixa': 24
+            };
+            
+            return hoursDiff > (slaHours[ticket.priority] || 8) && ticket.status !== 'Fechado';
+        }
+
         // NOVO: Função para obter classes de cor baseadas na prioridade (agora com 'Normal')
         function getPriorityClasses(prioridade) {
             switch (prioridade) {
@@ -124,6 +140,54 @@ const loginView = document.getElementById('login-view');
             }
         }
 
+        // --- NOVO: Funções para API de Métricas ---
+        
+        /**
+         * Busca métricas do backend via API REST
+         * Endpoint esperado: GET /api/metrics
+         * Resposta esperada: { totalTickets, openTickets, avgResponseTime, slaBreachCount }
+         */
+        async function fetchMetrics() {
+            try {
+                // Faz requisição para o endpoint de métricas
+                const response = await fetch('/api/metrics');
+                if (response.ok) {
+                    const metrics = await response.json();
+                    updateMetricsCards(metrics);
+                } else {
+                    console.error('Erro ao buscar métricas:', response.status);
+                    updateMetricsCards(null); // Usa fallback se API falhar
+                }
+            } catch (error) {
+                console.error('Erro na requisição de métricas:', error);
+                updateMetricsCards(null); // Usa fallback se houver erro de rede
+            }
+        }
+        
+        /**
+         * Atualiza os valores nos cards de métricas
+         * @param {Object|null} metrics - Dados da API ou null para usar fallback
+         */
+        function updateMetricsCards(metrics) {
+            if (metrics) {
+                // Atualiza com dados da API
+                document.getElementById('metric-total-tickets').textContent = metrics.totalTickets || '0';
+                document.getElementById('metric-open-tickets').textContent = metrics.openTickets || '0';
+                document.getElementById('metric-avg-response').textContent = metrics.avgResponseTime || '0';
+                document.getElementById('metric-sla-breach').textContent = metrics.slaBreachCount || '0';
+            } else {
+                // Fallback: calcula métricas usando dados locais (mockTickets)
+                const totalTickets = mockTickets.length;
+                const openTickets = mockTickets.filter(t => t.status === 'Aberto').length;
+                const slaBreachCount = mockTickets.filter(t => isTicketOutOfSLA(t)).length;
+                
+                document.getElementById('metric-total-tickets').textContent = totalTickets;
+                document.getElementById('metric-open-tickets').textContent = openTickets;
+                document.getElementById('metric-avg-response').textContent = '45'; // Valor fixo para demo
+                document.getElementById('metric-sla-breach').textContent = slaBreachCount;
+            }
+        }
+        
         // --- Funções de Navegação e Autenticação (Novas) ---
 
         function showApp(isLoggedIn) {
@@ -133,6 +197,7 @@ const loginView = document.getElementById('login-view');
                 reportsDashboard.classList.add('hidden'); 
                 checkThemePreference();
                 renderTickets(mockTickets);
+                fetchMetrics();
             } else {
                 mainApp.classList.add('hidden');
                 ticketDetailView.classList.add('hidden');
@@ -366,11 +431,16 @@ const loginView = document.getElementById('login-view');
                 const ticketNumber = filteredTickets.length - index;
                 const assignedToHtml = ticket.assignedTo ? `<span class="text-xs text-gray-500 mt-1 truncate">Responsável: ${ticket.assignedTo === AGENT_NAME ? 'Você' : ticket.assignedTo}</span>` : '';
 
-                ticketElement.className = `p-4 border border-gray-200 rounded-md shadow-sm cursor-pointer hover:bg-gray-50 transition-colors ${ticketBgClass}`;
+                // NOVO: Aplicar classes de alerta para tickets fora do SLA
+                const outOfSLA = isTicketOutOfSLA(ticket);
+                const slaAlertClasses = outOfSLA ? 'border-red-500 border-2 bg-red-50' : 'border-gray-200';
+                const slaIconHtml = outOfSLA ? '<svg class="w-4 h-4 text-red-500 inline-block mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>' : '';
+
+                ticketElement.className = `p-4 border rounded-md shadow-sm cursor-pointer hover:bg-gray-50 transition-colors ${ticketBgClass} ${slaAlertClasses}`;
                 ticketElement.dataset.id = ticket.id;
                 ticketElement.innerHTML = `
                     <div class="flex items-center justify-between mb-2 pointer-events-none">
-                        <h3 class="text-lg font-semibold text-gray-800 truncate">#${ticketNumber} - ${ticket.subject}</h3>
+                        <h3 class="text-lg font-semibold text-gray-800 truncate">${slaIconHtml}#${ticketNumber} - ${ticket.subject}</h3>
                         <div class="flex flex-col items-end space-y-1">
                             <span class="text-xs font-medium px-2 py-1 rounded-full ${priorityColor}">${ticket.priority}</span>
                             <span class="text-xs font-medium px-2 py-1 rounded-full ${statusColor}">${ticket.status}</span>
@@ -450,6 +520,7 @@ const loginView = document.getElementById('login-view');
             switch (ticket.status) {
                 case 'Aberto': statusColor = 'bg-green-500'; break;
                 case 'Em Andamento': statusColor = 'bg-yellow-500'; break;
+                case 'Resolvido': statusColor = 'bg-blue-500'; break;
                 case 'Fechado': statusColor = 'bg-red-500'; break;
             }
 
@@ -508,6 +579,7 @@ const loginView = document.getElementById('login-view');
                             <select id="status-select" class="block w-full px-3 py-2 mb-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
                                 <option value="Aberto">Aberto</option>
                                 <option value="Em Andamento">Em Andamento</option>
+                                <option value="Resolvido">Resolvido</option>
                                 <option value="Fechado">Fechado</option>
                             </select>
                             <button id="update-status-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition-colors">
@@ -532,6 +604,20 @@ const loginView = document.getElementById('login-view');
                         <div id="priority-message" class="mt-2 text-center text-sm"></div>
                     </div>
                     `;
+            } else if (ticket.status === 'Resolvido') {
+                actionSectionHtml = `
+                    <div class="mt-4 p-4 border-l-4 border-yellow-400 bg-yellow-50 dark:bg-yellow-900 dark:border-yellow-600">
+                        <div class="flex">
+                            <svg class="w-5 h-5 text-yellow-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                            </svg>
+                            <div>
+                                <h4 class="text-sm font-medium text-yellow-800 dark:text-yellow-200">Fechamento Automático</h4>
+                                <p class="text-sm text-yellow-700 dark:text-yellow-300 mt-1">Este ticket será fechado automaticamente em 72 horas se não houver resposta do cliente.</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
             } else if (ticket.status === 'Fechado') {
                  actionSectionHtml = `
                     <div id="reopen-ticket-section" class="mt-4 p-4 border rounded-lg bg-gray-50 shadow-inner dark:bg-gray-700">
@@ -790,8 +876,10 @@ const loginView = document.getElementById('login-view');
                 });
             }
             // Garante que o histórico role para a última mensagem ao abrir o ticket
-            const historyPanel = document.getElementById('ticket-history-panel');
-            if (historyPanel) historyPanel.scrollTop = historyPanel.scrollHeight;
+            setTimeout(() => {
+                const historyPanel = document.getElementById('ticket-history-panel');
+                if (historyPanel) historyPanel.scrollTop = historyPanel.scrollHeight;
+            }, 100);
         }
         
         // Lidar com o envio do formulário de novo ticket 
@@ -837,24 +925,32 @@ const loginView = document.getElementById('login-view');
         function toggleHistoryFullscreen() {
             const historyPanel = document.getElementById('ticket-history-panel');
             const viewHeaderContent = document.querySelectorAll('.view-header-content');
+            const actionSection = document.getElementById('action-and-reply-section');
             
             const isFullscreen = ticketDetailView.classList.contains('is-fullscreen');
             
-            ticketDetailView.classList.toggle('is-fullscreen', !isFullscreen);
-            historyPanel.classList.toggle('ticket-history-panel-fullscreen', !isFullscreen);
-
-            viewHeaderContent.forEach(el => el.classList.toggle('hidden', !isFullscreen));
-            
-            ticketCreateView.classList.toggle('hidden', !isFullscreen);
-            ticketListView.classList.toggle('hidden', !isFullscreen);
-            
-            expandIcon.classList.toggle('hidden', !isFullscreen);
-            closeIcon.classList.toggle('hidden', isFullscreen);
-            
             if (!isFullscreen) {
-                historyPanel.scrollTop = 0;
+                // Entrando no modo fullscreen
+                ticketDetailView.classList.add('is-fullscreen');
+                if (historyPanel) historyPanel.classList.add('ticket-history-panel-fullscreen');
+                viewHeaderContent.forEach(el => el.classList.add('hidden'));
+                if (actionSection) actionSection.classList.add('hidden');
+                ticketCreateView.classList.add('hidden');
+                ticketListView.classList.add('hidden');
+                expandIcon.classList.add('hidden');
+                closeIcon.classList.remove('hidden');
+                if (historyPanel) historyPanel.scrollTop = 0;
             } else {
-                 historyPanel.scrollTop = historyPanel.scrollHeight;
+                // Saindo do modo fullscreen
+                ticketDetailView.classList.remove('is-fullscreen');
+                if (historyPanel) historyPanel.classList.remove('ticket-history-panel-fullscreen');
+                viewHeaderContent.forEach(el => el.classList.remove('hidden'));
+                if (actionSection) actionSection.classList.remove('hidden');
+                ticketCreateView.classList.remove('hidden');
+                ticketListView.classList.remove('hidden');
+                expandIcon.classList.remove('hidden');
+                closeIcon.classList.add('hidden');
+                if (historyPanel) historyPanel.scrollTop = historyPanel.scrollHeight;
             }
         }
 
@@ -922,6 +1018,9 @@ const loginView = document.getElementById('login-view');
             }
         }
 
+        // Atualizar métricas automaticamente a cada 30 segundos (30000ms)
+        setInterval(fetchMetrics, 30000);
+        
         window.onload = () => {
             // Inicializa o tema e mostra a tela de Login
             checkThemePreference(); 
@@ -950,6 +1049,7 @@ const loginView = document.getElementById('login-view');
                     
                     currentFilter = event.target.textContent.trim();
                     renderTickets(mockTickets);
+                    fetchMetrics(); // Atualizar métricas após mudanças nos filtros
                 });
             });
 
