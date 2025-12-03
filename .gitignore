@@ -1,0 +1,28 @@
+# Arquivos de configuração com credenciais
+email_config.py
+config.py
+.env
+
+# Arquivos Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# Ambientes virtuais
+venv/
+env/
+ENV/
+
+# Arquivos do sistema
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Arquivos temporários
+*.tmp
+*.temp
